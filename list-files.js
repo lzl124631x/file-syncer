@@ -1,4 +1,4 @@
-var fs = require("fs");
+const fs = require("fs-extra");
 var path = require("path");
 
 function getDirectorySize(directory) {
@@ -47,4 +47,47 @@ const listFilesInFolder = (folder) => {
     });
 };
 
-listFilesInFolder("H:\\");
+// listFilesInFolder("H:\\");
+
+const fileList = [];
+function syncFiles(sourceDir, targetDir) {
+    const files = fs.readdirSync(sourceDir);
+
+    for (let i = 0; i < files.length; i++) {
+        const fileName = files[i];
+        if (
+            fileName.startsWith(".") ||
+            fileName === "$RECYCLE.BIN" ||
+            fileName === "Lightroom"
+        ) {
+            continue;
+        }
+        const sourceFilePath = path.join(sourceDir, fileName);
+        const targetFilePath = path.join(targetDir, fileName);
+        const doesTargetFilePathExist = fs.existsSync(targetFilePath);
+        const sourceFileStats = fs.statSync(sourceFilePath);
+
+        if (sourceFileStats.isDirectory()) {
+            if (!doesTargetFilePathExist) {
+                console.log(sourceFilePath);
+                fs.copySync(sourceFilePath, targetFilePath);
+                fileList.push(sourceFilePath);
+            } else {
+                // Recursively sync subdirectories
+                syncFiles(sourceFilePath, targetFilePath);
+            }
+        } else {
+            // Copy the file to the target directory if it doesn't exist or is different
+            if (
+                !doesTargetFilePathExist ||
+                sourceFileStats.size !== fs.statSync(targetFilePath).size
+            ) {
+                console.log(fileName, sourceFilePath);
+                fs.copyFileSync(sourceFilePath, targetFilePath);
+                fileList.push(sourceFilePath);
+            }
+        }
+    }
+}
+syncFiles("H:\\", "I:\\");
+fs.writeFileSync("log.txt", fileList.join("\n"));
